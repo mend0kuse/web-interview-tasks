@@ -1,7 +1,8 @@
+import { ResponseSuccess } from '~shared/api/response';
+import { wrappedFetch } from '~shared/api/wrapped-fetch';
 import { config } from '~shared/config';
-import { ResponseError, ResponseSuccess } from '~shared/response';
 
-import { useQuery } from '@tanstack/react-query';
+import { skipToken, useQuery } from '@tanstack/react-query';
 
 import { superheroKeys } from './keys';
 
@@ -21,24 +22,17 @@ export function useSearchSuperheros(params: Params) {
 
   return useQuery({
     queryKey: superheroKeys.search(query),
-    queryFn: async () => {
-      const response: ResponseSuccess<ResponsePayload> = await fetch(
-        `${config.apiHost}/superhero/name/${query}`
-      )
-        .then(async (res) => {
-          if (!res.ok) {
-            const error: ResponseError = await res.json();
-
-            throw new Error(
-              `Error ${res.status}: ${res.statusText} - ${error.error}`
-            );
-          }
-
-          return res.json();
-        })
-        .then((res) => res.results);
-
-      return response;
-    },
+    queryFn: query
+      ? () => {
+          return wrappedFetch<
+            ResponseSuccess<ResponsePayload>,
+            ResponsePayload['results']
+          >(
+            `${config.apiHost}/api/${config.apiToken}/search/${query}`,
+            undefined,
+            (response) => response.results
+          );
+        }
+      : skipToken,
   });
 }
